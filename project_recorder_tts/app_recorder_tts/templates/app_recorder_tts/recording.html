@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Backup TTS</title>
+
+   <!-- Bootstrap -->
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/wavesurfer.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+
+</head>
+<body>
+    <div>
+        <!-- 해설 -->
+        <h1>스크립트 읽고 녹음 실시</h1>
+        <ul>
+            <li>녹음 버튼을 누르면 8초간 진행되며 자동으로 저장</li>
+            <li>녹음 버튼을 현재 번호에서 다시 누르면 파일이 덮어쓰기</li>
+            <li>파형을 드래그하여 구간 선택</li>
+            <li>구간을 Shift 클릭하면 반복 재생</li>
+            <li>구간을 더블클릭하면 시작과 종료 시간, 구간 삭제, 구간 저장 버튼 표시</li>
+        </ul>
+
+
+        <!-- 진행률 -->
+        <h4>현재 번호 : {{result_nownum}} / 전체 번호 : {{len_all_values}}</h4>
+
+
+        <!-- 스크립트 이동버튼 -->
+        <div>
+            <a href="{% url 'recording' status='init' %}">처음</a>
+            <a href="{% url 'recording' status='pre' %}">이전</a>
+            <a href="{% url 'recording' status='next' %}">다음</a>
+        </div>
+
+
+        <!-- 스크립트 내용-->
+        <h3>스크립트 : {{show_script}}</h3>
+    </div>
+
+
+
+
+
+
+
+
+
+
+    <!-- 녹음 버튼, 성공 확인 -->
+
+    <!-- 버튼 : 녹음, 일시정지, 중지 -->
+    <div id="controls">
+  	 <button id="recordButton">Record</button>
+  	 <button id="pauseButton" disabled>Pause</button>
+  	 <button id="stopButton" disabled>Stop</button>
+    </div>
+
+
+    <!-- 녹음 완료목록, 다운로드 및 업로드 링크 -->
+    <div id="formats">Format: start recording to see sample rate</div>
+    <p><strong>Recordings:</strong></p>
+    <ol id="recordingsList"></ol>
+
+
+
+
+
+
+    <!-- Wavesurfer 파형 표시 -->
+    <div id="demo">
+        <!-- 실시간 wave form 그림 -->
+        <p>실시간 파형</p>
+        <div id="waveform_realtime"></div>
+
+
+
+
+
+
+        <p>녹음된 파형</p>
+        <!-- 상단 초 단위 눈금 표시 -->
+        <div id="timeline"></div>
+        <!-- 저장된 wav를 불러와서 wave form 그림 -->
+        <!-- Create a div where the audio waves will be shown -->
+        <div id="waveform"></div>
+
+
+        <!-- views.py/recording의 context로부터 record_result_path를 받고, id값으로 script에서 wavsfr 그림-->
+        <input type="hidden" id = "hidden_filepath"  name = "hidden_filepath" value = "{{wav_path}}">
+        <a type="hidden" href="{% url 'recording' status='edit' %}" id="refresh_page"></a>
+
+
+
+        <div class="controls">
+            <div class="row">
+
+
+                <div class="col-sm-2">
+                    <button class="btn btn-primary btn-block" data-action="play">
+                        <span id="play">
+                            <i class="glyphicon glyphicon-play"></i>
+                            Play
+                        </span>
+
+                        <span id="pause" style="display: none">
+                            <i class="glyphicon glyphicon-pause"></i>
+                            Pause
+                        </span>
+                    </button>
+                </div>
+
+
+
+
+
+                <!-- 하단 Zoom 눈금 표시 -->
+                <div class="col-sm-1">
+                    <i class="glyphicon glyphicon-zoom-in"></i>
+                </div>
+
+                <div class="col-sm-3">
+                  <input data-action="zoom" type="range" min="1" max="100" value="0" style="width: 100%" />
+                </div>
+
+                <div class="col-sm-1">
+                    <i class="glyphicon glyphicon-zoom-out"></i>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+        <form role="form" name="edit" style="opacity: 0; transition: opacity 300ms linear; margin: 30px 0;">
+            <div class="form-group">
+                <label for="start">Start</label>
+                <input class="form-control" id="start" name="start" />
+            </div>
+
+            <div class="form-group">
+                <label for="end">End</label>
+                <input class="form-control" id="end" name="end" />
+            </div>
+
+            <button class="btn btn-danger btn-block" data-action="delete-region">선택구간 삭제</button>
+
+            <button onclick="valueToViews()" class="btn btn-success btn-block">선택구간 저장</button>
+            <input type="hidden" id = "hidden_start"  name = "hidden_start" value = "">
+            <input type="hidden" id = "hidden_end"  name = "hidden_end" value = "">
+
+        </form>
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+
+
+    <!-- recorder.js script -->
+    <!-- inserting these scripts at the end to be able to use all the elements in the DOM -->
+    <script src="https://cdn.rawgit.com/mattdiamond/Recorderjs/08e7abd9/dist/recorder.js"></script>
+
+    <!-- Load using a free CDN -->
+    <script src="https://unpkg.com/wavesurfer.js/dist/wavesurfer.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.microphone.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.cursor.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.playhead.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"></script>
+
+
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/wavsfr.js' %}"></script>
+</body>
+</html>
